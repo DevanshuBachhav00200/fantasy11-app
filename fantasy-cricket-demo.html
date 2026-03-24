@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fantasy Cricket IPL - Interactive Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --orange: #FF6B35;
+    --orange2: #F7931E;
+    --blue: #4A9EFF;
+    --green: #44BB88;
+    --red: #FF4444;
+    --bg: #071525;
+    --bg2: #0A1E30;
+    --bg3: #0F2030;
+    --bg4: #1A3048;
+    --text: #E8F0F8;
+    --muted: #667788;
+    --border: #1A3048;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--bg2); position: relative; box-shadow: 0 0 60px rgba(0,0,0,0.5); }
+
+  /* Top bar */
+  .topbar { background: linear-gradient(135deg, #0A1628, #0D2137); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+  .topbar-brand { display: flex; align-items: center; gap: 8px; }
+  .topbar-brand .logo { font-size: 24px; }
+  .topbar-brand .name { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; color: var(--orange); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .coin-badge { background: rgba(247,147,30,0.15); border: 1px solid rgba(247,147,30,0.4); border-radius: 20px; padding: 6px 12px; font-size: 13px; font-weight: 700; color: var(--orange2); }
+
+  /* Nav tabs */
+  .nav { display: flex; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .nav-tab { flex: 1; padding: 12px 4px; text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .nav-tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+  .nav-tab:hover:not(.active) { color: var(--text); }
+  .nav-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+
+  /* Screens */
+  .screen { display: none; flex-direction: column; flex: 1; overflow-y: auto; }
+  .screen.active { display: flex; }
+
+  /* Filters */
+  .filter-row { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; }
+  .filter-btn { white-space: nowrap; padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg3); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .filter-btn.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+
+  /* Match card */
+  .match-card { margin: 0 16px 14px; background: var(--bg3); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; cursor: pointer; transition: transform 0.1s, border-color 0.2s; }
+  .match-card:hover { transform: translateY(-2px); border-color: var(--orange); }
+  .match-card-top { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px 8px; }
+  .status-badge { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; border: 1px solid; }
+  .status-upcoming { color: var(--blue); border-color: var(--blue); background: rgba(74,158,255,0.1); }
+  .status-live { color: var(--red); border-color: var(--red); background: rgba(255,68,68,0.1); }
+  .status-completed { color: var(--green); border-color: var(--green); background: rgba(68,187,136,0.1); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .prize { font-size: 13px; font-weight: 600; color: var(--orange2); }
+  .teams-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; }
+  .team { flex: 1; text-align: center; }
+  .team-emoji { font-size: 36px; }
+  .team-name { font-size: 22px; font-weight: 800; margin-top: 4px; }
+  .team-score { font-size: 13px; color: var(--blue); font-weight: 600; margin-top: 4px; }
+  .vs-col { text-align: center; }
+  .vs { font-size: 13px; color: var(--muted); font-weight: 700; }
+  .timer { font-size: 12px; color: var(--orange); font-weight: 600; margin-top: 4px; }
+  .result-text { text-align: center; color: var(--green); font-size: 13px; font-weight: 600; padding: 0 16px 8px; }
+  .match-card-bottom { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 12px; border-top: 1px solid var(--border); }
+  .venue-text { font-size: 11px; color: var(--muted); flex: 1; }
+  .join-btn { background: linear-gradient(135deg, var(--orange), var(--orange2)); border-radius: 20px; padding: 7px 16px; font-size: 12px; font-weight: 700; color: #fff; cursor: pointer; border: none; }
+  .join-btn:hover { opacity: 0.9; }
+
+  /* Modal overlay */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: flex-end; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg2); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; animation: slideUp 0.3s ease; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-title { font-size: 17px; font-weight: 800; }
+  .modal-close { background: var(--bg3); border: none; color: var(--muted); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .modal-body { overflow-y: auto; flex: 1; }
+
+  /* Team selection */
+  .selection-stats { display: flex; justify-content: space-around; padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .sel-stat { text-align: center; }
+  .sel-val { font-size: 20px; font-weight: 800; color: var(--orange); }
+  .sel-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .role-tabs { display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto; border-bottom: 1px solid var(--border); }
+  .role-tab { white-space: nowrap; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--bg3); color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer; }
+  .role-tab.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .player-col-header { display: flex; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+  .col-h { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .player-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(26,48,72,0.5); cursor: pointer; transition: background 0.15s; }
+  .player-row:hover { background: rgba(255,107,53,0.05); }
+  .player-row.selected { background: rgba(255,107,53,0.1); }
+  .player-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-right: 12px; flex-shrink: 0; }
+  .player-icon.normal { background: var(--bg4); }
+  .player-icon.selected { background: rgba(255,107,53,0.3); }
+  .player-info { flex: 1; }
+  .player-name-row { display: flex; align-items: center; gap: 6px; }
+  .p-name { font-size: 14px; font-weight: 700; }
+  .p-name.selected-name { color: var(--orange); }
+  .cap-badge { background: var(--orange2); color: #fff; font-size: 10px; font-weight: 800; border-radius: 4px; padding: 1px 5px; }
+  .vc-badge { background: var(--blue); color: #fff; font-size: 10px; font-weight: 800; border-radius: 4px; padding: 1px 5px; }
+  .p-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .p-credits { font-size: 13px; font-weight: 700; color: var(--blue); width: 45px; text-align: center; }
+  .p-pts { font-size: 13px; font-weight: 700; color: var(--green); width: 40px; text-align: center; }
+  .check-circle { width: 22px; height: 22px; border-radius: 50%; background: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; flex-shrink: 0; }
+
+  /* Bottom action bar */
+  .bottom-actions { padding: 12px 16px; background: var(--bg); border-top: 1px solid var(--border); }
+  .cap-vc-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .cap-btn { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .cap-btn.active-c { border-color: var(--orange2); background: rgba(247,147,30,0.1); color: var(--orange2); }
+  .cap-btn.active-vc { border-color: var(--blue); background: rgba(74,158,255,0.1); color: var(--blue); }
+  .save-btn { width: 100%; padding: 15px; border-radius: 14px; background: linear-gradient(135deg, var(--orange), var(--orange2)); border: none; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .save-btn:hover { opacity: 0.9; }
+  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Leaderboard */
+  .lb-banner { margin: 12px 16px; background: linear-gradient(135deg, rgba(255,107,53,0.15), rgba(247,147,30,0.08)); border: 1px solid rgba(255,107,53,0.3); border-radius: 14px; padding: 14px; display: flex; justify-content: space-around; }
+  .lb-banner-item { text-align: center; }
+  .lb-banner-val { font-size: 20px; font-weight: 800; color: var(--orange); }
+  .lb-banner-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .lb-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(26,48,72,0.5); }
+  .lb-row.my-row { background: rgba(255,107,53,0.08); }
+  .rank-col { width: 36px; text-align: center; }
+  .rank-emoji { font-size: 20px; }
+  .rank-num { font-size: 15px; font-weight: 700; color: var(--muted); }
+  .lb-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; margin-right: 12px; }
+  .lb-avatar.me { background: var(--orange); }
+  .lb-user { flex: 1; }
+  .lb-username { font-size: 14px; font-weight: 700; }
+  .lb-username.me { color: var(--orange); }
+  .lb-team { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .lb-points { text-align: right; }
+  .lb-pts-val { font-size: 18px; font-weight: 800; color: var(--blue); }
+  .lb-pts-label { font-size: 11px; color: var(--muted); }
+
+  /* Scorecard */
+  .scorecard-header { display: flex; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .sc-h { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .sc-row { display: flex; align-items: center; padding: 11px 16px; border-bottom: 1px solid rgba(26,48,72,0.4); }
+  .sc-row.top { background: rgba(255,107,53,0.07); }
+  .sc-player { flex: 1; }
+  .sc-name { font-size: 14px; font-weight: 700; }
+  .sc-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .sc-val { width: 40px; text-align: center; font-size: 14px; font-weight: 700; color: var(--text); }
+  .sc-pts { width: 44px; text-align: center; font-size: 15px; font-weight: 800; color: var(--green); }
+
+  /* Admin */
+  .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; }
+  .admin-card { background: var(--bg3); border-radius: 14px; border: 1px solid var(--border); padding: 16px; }
+  .admin-card-val { font-size: 28px; font-weight: 800; }
+  .admin-card-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .admin-section { padding: 0 16px 20px; }
+  .admin-section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--orange); }
+  .admin-form { background: var(--bg3); border-radius: 14px; border: 1px solid var(--border); padding: 16px; }
+  .form-row { margin-bottom: 12px; }
+  .form-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block; font-weight: 600; }
+  .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 14px; font-family: 'Inter', sans-serif; }
+  .form-input:focus { outline: none; border-color: var(--orange); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .admin-btn { width: 100%; padding: 13px; border-radius: 12px; background: linear-gradient(135deg, var(--orange), var(--orange2)); border: none; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+  .admin-btn:hover { opacity: 0.9; }
+  .sim-btn { background: linear-gradient(135deg, #185FA5, var(--blue)); margin-top: 10px; }
+  .success-msg { color: var(--green); text-align: center; padding: 10px; font-weight: 600; font-size: 14px; }
+
+  /* Live indicator */
+  .ws-chip { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--green); background: rgba(68,187,136,0.12); border: 1px solid rgba(68,187,136,0.3); border-radius: 10px; padding: 4px 8px; }
+  .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+  /* Section headers */
+  .section-header { padding: 16px 16px 8px; }
+  .section-title { font-size: 13px; color: var(--orange); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Toast */
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: 600; font-size: 14px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 15px; }
+  .spacer { height: 80px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <span class="logo">🏏</span>
+      <span class="name">FANTASY 11</span>
+    </div>
+    <div class="topbar-right">
+      <div class="ws-chip"><div class="ws-dot"></div>LIVE</div>
+      <div class="coin-badge">🪙 2,450</div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav">
+    <div class="nav-tab active" onclick="showScreen('matches')">
+      <span class="nav-icon">🏟</span>Matches
+    </div>
+    <div class="nav-tab" onclick="showScreen('myteams')">
+      <span class="nav-icon">👥</span>My Teams
+    </div>
+    <div class="nav-tab" onclick="showScreen('leaderboard')">
+      <span class="nav-icon">🏆</span>Leaders
+    </div>
+    <div class="nav-tab" onclick="showScreen('admin')">
+      <span class="nav-icon">⚙️</span>Admin
+    </div>
+  </div>
+
+  <!-- MATCHES SCREEN -->
+  <div class="screen active" id="screen-matches">
+    <div class="filter-row">
+      <div class="filter-btn active" onclick="filterMatches('all', this)">All</div>
+      <div class="filter-btn" onclick="filterMatches('upcoming', this)">Upcoming</div>
+      <div class="filter-btn" onclick="filterMatches('live', this)">🔴 Live</div>
+      <div class="filter-btn" onclick="filterMatches('completed', this)">Completed</div>
+    </div>
+    <div id="matches-list"></div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- MY TEAMS SCREEN -->
+  <div class="screen" id="screen-myteams">
+    <div class="section-header"><div class="section-title">My Fantasy Teams</div></div>
+    <div id="myteams-list"></div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- LEADERBOARD SCREEN -->
+  <div class="screen" id="screen-leaderboard">
+    <div class="section-header"><div class="section-title">🏆 Match Leaderboard</div></div>
+    <div class="lb-banner">
+      <div class="lb-banner-item"><div class="lb-banner-val">#4</div><div class="lb-banner-label">Your Rank</div></div>
+      <div class="lb-banner-item"><div class="lb-banner-val">487.5</div><div class="lb-banner-label">Points</div></div>
+      <div class="lb-banner-item"><div class="lb-banner-val">Top 15%</div><div class="lb-banner-label">Percentile</div></div>
+    </div>
+    <div id="leaderboard-list"></div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ADMIN SCREEN -->
+  <div class="screen" id="screen-admin">
+    <div class="admin-grid">
+      <div class="admin-card"><div class="admin-card-val" style="color:var(--orange)">3</div><div class="admin-card-label">Total Matches</div></div>
+      <div class="admin-card"><div class="admin-card-val" style="color:var(--blue)">44</div><div class="admin-card-label">Players</div></div>
+      <div class="admin-card"><div class="admin-card-val" style="color:var(--green)">1</div><div class="admin-card-label">Live Now</div></div>
+      <div class="admin-card"><div class="admin-card-val" style="color:var(--orange2)">127</div><div class="admin-card-label">Fantasy Teams</div></div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-title">Add New Match</div>
+      <div class="admin-form">
+        <div class="form-row-2">
+          <div class="form-row">
+            <label class="form-label">Team 1</label>
+            <input class="form-input" id="t1" placeholder="MI" value="SRH">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Team 2</label>
+            <input class="form-input" id="t2" placeholder="CSK" value="DC">
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Venue</label>
+          <input class="form-input" id="venue" value="Rajiv Gandhi Intl. Stadium, Hyderabad">
+        </div>
+        <div class="form-row-2">
+          <div class="form-row">
+            <label class="form-label">Date</label>
+            <input class="form-input" id="mdate" type="date">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Prize Pool (₹)</label>
+            <input class="form-input" id="prize" value="25000">
+          </div>
+        </div>
+        <button class="admin-btn" onclick="adminCreateMatch()">+ Create Match</button>
+        <div id="match-msg"></div>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-title">Simulate Match</div>
+      <div class="admin-form">
+        <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">Run AI-powered match simulation to generate realistic player performances and calculate fantasy points.</p>
+        <button class="admin-btn sim-btn" onclick="runSimulation()">⚡ Run Match Simulation</button>
+        <div id="sim-msg"></div>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-title">Add Player</div>
+      <div class="admin-form">
+        <div class="form-row">
+          <label class="form-label">Player Name</label>
+          <input class="form-input" id="pname" placeholder="Shubman Gill">
+        </div>
+        <div class="form-row-2">
+          <div class="form-row">
+            <label class="form-label">Team</label>
+            <input class="form-input" id="pteam" placeholder="GT">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Credits</label>
+            <input class="form-input" id="pcredits" type="number" placeholder="9.5">
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Role</label>
+          <select class="form-input" id="prole">
+            <option>batsman</option>
+            <option>bowler</option>
+            <option>all-rounder</option>
+            <option>wicket-keeper</option>
+          </select>
+        </div>
+        <button class="admin-btn" onclick="adminAddPlayer()">+ Add Player</button>
+        <div id="player-msg"></div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+</div>
+
+<!-- Team Selection Modal -->
+<div class="modal-overlay" id="teamModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-match-title">MI vs CSK — Select Team</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:2px">Max 100 credits • 11 players</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="selection-stats">
+      <div class="sel-stat"><div class="sel-val" id="sel-count">0/11</div><div class="sel-label">Players</div></div>
+      <div class="sel-stat"><div class="sel-val" id="sel-credits">100.0</div><div class="sel-label">Credits Left</div></div>
+      <div class="sel-stat"><div class="sel-val" id="sel-captain">—</div><div class="sel-label">Captain</div></div>
+      <div class="sel-stat"><div class="sel-val" id="sel-vc">—</div><div class="sel-label">V-Captain</div></div>
+    </div>
+    <div class="role-tabs">
+      <div class="role-tab active" onclick="filterRole('all', this)">All</div>
+      <div class="role-tab" onclick="filterRole('wicket-keeper', this)">🧤 WK</div>
+      <div class="role-tab" onclick="filterRole('batsman', this)">🏏 BAT</div>
+      <div class="role-tab" onclick="filterRole('all-rounder', this)">⭐ AR</div>
+      <div class="role-tab" onclick="filterRole('bowler', this)">⚾ BOWL</div>
+    </div>
+    <div class="player-col-header">
+      <div class="col-h" style="flex:1">Player</div>
+      <div class="col-h" style="width:45px;text-align:center">Cr</div>
+      <div class="col-h" style="width:40px;text-align:center">Pts</div>
+      <div style="width:22px"></div>
+    </div>
+    <div id="players-list" class="modal-body"></div>
+    <div class="bottom-actions">
+      <div class="cap-vc-row" id="cap-vc-row" style="display:none">
+        <button class="cap-btn" id="cap-btn" onclick="toggleCaptainMode('captain')">👑 Set Captain</button>
+        <button class="cap-btn" id="vc-btn" onclick="toggleCaptainMode('vc')">⭐ Set Vice-Captain</button>
+      </div>
+      <button class="save-btn" id="save-btn" onclick="saveTeam()">Save Team (0/11)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATA ──────────────────────────────────────────────────────────────────
+const MATCHES = [
+  { id: 'm1', team1: 'MI', team2: 'CSK', venue: 'Wankhede Stadium, Mumbai', scheduledAt: Date.now() + 2*3600000, status: 'upcoming', prizePool: 50000 },
+  { id: 'm2', team1: 'RCB', team2: 'KKR', venue: 'M. Chinnaswamy Stadium, Bangalore', scheduledAt: Date.now() + 26*3600000, status: 'upcoming', prizePool: 75000 },
+  { id: 'm3', team1: 'MI', team2: 'RCB', venue: 'Wankhede Stadium, Mumbai', scheduledAt: Date.now() - 5*86400000, status: 'live', prizePool: 50000 },
+  { id: 'm4', team1: 'CSK', team2: 'KKR', venue: 'MA Chidambaram Stadium, Chennai', scheduledAt: Date.now() - 10*86400000, status: 'completed', prizePool: 60000, result: { team1Score: '192/4', team2Score: '178/7', description: 'CSK won by 14 runs' } },
+];
+
+const PLAYERS = [
+  { id: 'p1', name: 'Rohit Sharma', team: 'MI', role: 'batsman', credits: 10.5, pts: 85 },
+  { id: 'p2', name: 'Ishan Kishan', team: 'MI', role: 'wicket-keeper', credits: 9.5, pts: 75 },
+  { id: 'p3', name: 'Suryakumar Yadav', team: 'MI', role: 'batsman', credits: 11.0, pts: 95 },
+  { id: 'p4', name: 'Hardik Pandya', team: 'MI', role: 'all-rounder', credits: 11.0, pts: 92 },
+  { id: 'p5', name: 'Jasprit Bumrah', team: 'MI', role: 'bowler', credits: 10.0, pts: 88 },
+  { id: 'p6', name: 'Tilak Varma', team: 'MI', role: 'batsman', credits: 8.5, pts: 65 },
+  { id: 'p7', name: 'MS Dhoni', team: 'CSK', role: 'wicket-keeper', credits: 10.0, pts: 82 },
+  { id: 'p8', name: 'Ruturaj Gaikwad', team: 'CSK', role: 'batsman', credits: 10.0, pts: 80 },
+  { id: 'p9', name: 'Ravindra Jadeja', team: 'CSK', role: 'all-rounder', credits: 10.5, pts: 88 },
+  { id: 'p10', name: 'Deepak Chahar', team: 'CSK', role: 'bowler', credits: 8.5, pts: 65 },
+  { id: 'p11', name: 'Matheesha Pathirana', team: 'CSK', role: 'bowler', credits: 8.5, pts: 68 },
+  { id: 'p12', name: 'Moeen Ali', team: 'CSK', role: 'all-rounder', credits: 9.0, pts: 70 },
+  { id: 'p13', name: 'Devon Conway', team: 'CSK', role: 'batsman', credits: 9.5, pts: 72 },
+  { id: 'p14', name: 'Tushar Deshpande', team: 'CSK', role: 'bowler', credits: 8.0, pts: 58 },
+];
+
+const LEADERBOARD = [
+  { rank: 1, username: 'CricketKing99', team: 'SKY Attack XI', pts: 634.5 },
+  { rank: 2, username: 'Bumrah_Fan', team: 'Pace Warriors', pts: 598.0 },
+  { rank: 3, username: 'IPLMaster', team: 'Dhoni Warriors', pts: 574.5 },
+  { rank: 4, username: 'You', team: 'My Dream Team', pts: 487.5, isMe: true },
+  { rank: 5, username: 'FantasyGuru', team: 'Rohit Power XI', pts: 461.0 },
+  { rank: 6, username: 'CricketNerd', team: 'All-Stars', pts: 445.5 },
+  { rank: 7, username: 'WicketWizard', team: 'Jadeja Magic', pts: 432.0 },
+  { rank: 8, username: 'RunMachine', team: 'Virat XI', pts: 418.0 },
+  { rank: 9, username: 'PowerHitter', team: 'SKY Special', pts: 401.5 },
+  { rank: 10, username: 'SpinKing', team: 'Chahal Attack', pts: 388.0 },
+];
+
+const PERFORMANCES = [
+  { name: 'Suryakumar Yadav', team: 'MI', runs: 84, balls: 48, wickets: 0, pts: 142.0 },
+  { name: 'Jasprit Bumrah', team: 'MI', runs: 4, balls: 3, wickets: 4, overs: 4, pts: 138.5 },
+  { name: 'Ravindra Jadeja', team: 'CSK', runs: 38, balls: 22, wickets: 2, overs: 4, pts: 121.0 },
+  { name: 'Rohit Sharma', team: 'MI', runs: 67, balls: 41, wickets: 0, pts: 112.5 },
+  { name: 'MS Dhoni', team: 'CSK', runs: 44, balls: 21, wickets: 0, pts: 89.0 },
+  { name: 'Hardik Pandya', team: 'MI', runs: 32, balls: 18, wickets: 1, pts: 84.5 },
+  { name: 'Matheesha Pathirana', team: 'CSK', runs: 2, balls: 2, wickets: 3, overs: 4, pts: 82.0 },
+  { name: 'Ruturaj Gaikwad', team: 'CSK', runs: 55, balls: 38, wickets: 0, pts: 76.0 },
+  { name: 'Devon Conway', team: 'CSK', runs: 41, balls: 32, wickets: 0, pts: 61.5 },
+  { name: 'Deepak Chahar', team: 'CSK', runs: 8, balls: 7, wickets: 2, overs: 3, pts: 58.0 },
+];
+
+const MY_TEAMS = [
+  {
+    id: 't1', matchId: 'm1', matchName: 'MI vs CSK', status: 'upcoming',
+    teamName: 'My Dream Team 1', players: 11, credits: 97.5, points: 0, rank: 0,
+    captain: 'Suryakumar Yadav', vc: 'Jasprit Bumrah'
+  },
+  {
+    id: 't2', matchId: 'm4', matchName: 'CSK vs KKR', status: 'completed',
+    teamName: 'Dhoni Special XI', players: 11, credits: 99.0, points: 487.5, rank: 4,
+    captain: 'MS Dhoni', vc: 'Ravindra Jadeja'
+  },
+];
+
+// ─── STATE ─────────────────────────────────────────────────────────────────
+let selectedPlayers = new Set();
+let captainId = null;
+let vcId = null;
+let captainMode = null;
+let activeRoleFilter = 'all';
+let currentMatchFilter = 'all';
+let currentMatchId = null;
+
+// ─── SCREENS ───────────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'leaderboard') renderLeaderboard();
+  if (name === 'myteams') renderMyTeams();
+}
+
+// ─── MATCHES ───────────────────────────────────────────────────────────────
+function filterMatches(f, el) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentMatchFilter = f;
+  renderMatches();
+}
+
+function timeUntil(ts) {
+  const diff = ts - Date.now();
+  if (diff < 0) return '';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (h > 24) return Math.floor(h / 24) + 'd ' + (h % 24) + 'h';
+  return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+}
+
+function renderMatches() {
+  const list = document.getElementById('matches-list');
+  const filtered = MATCHES.filter(m => currentMatchFilter === 'all' || m.status === currentMatchFilter);
+  if (filtered.length === 0) { list.innerHTML = '<div class="empty-state">No matches found</div>'; return; }
+
+  list.innerHTML = filtered.map(m => `
+    <div class="match-card" onclick="openMatch('${m.id}')">
+      <div class="match-card-top">
+        <div class="status-badge status-${m.status}">
+          ${m.status === 'live' ? '<div class="live-dot"></div>' : ''}
+          ${m.status.toUpperCase()}
+        </div>
+        <div class="prize">🏆 ₹${m.prizePool.toLocaleString()}</div>
+      </div>
+      <div class="teams-row">
+        <div class="team" style="align-items:center">
+          <div class="team-emoji">🏏</div>
+          <div class="team-name">${m.team1}</div>
+          ${m.result ? `<div class="team-score">${m.result.team1Score}</div>` : ''}
+        </div>
+        <div class="vs-col">
+          <div class="vs">VS</div>
+          ${m.status === 'upcoming' ? `<div class="timer">${timeUntil(m.scheduledAt)}</div>` : ''}
+        </div>
+        <div class="team" style="align-items:center">
+          <div class="team-emoji">🏏</div>
+          <div class="team-name">${m.team2}</div>
+          ${m.result ? `<div class="team-score">${m.result.team2Score}</div>` : ''}
+        </div>
+      </div>
+      ${m.result ? `<div class="result-text">${m.result.description}</div>` : ''}
+      <div class="match-card-bottom">
+        <div class="venue-text">📍 ${m.venue}</div>
+        ${m.status === 'upcoming' ? `<button class="join-btn" onclick="event.stopPropagation(); openTeamSelection('${m.id}')">Join Contest</button>` : ''}
+        ${m.status === 'completed' ? `<button class="join-btn" style="background:linear-gradient(135deg,#185FA5,#4A9EFF)" onclick="event.stopPropagation(); showScreen('leaderboard')">Leaderboard</button>` : ''}
+        ${m.status === 'live' ? `<button class="join-btn" style="background:linear-gradient(135deg,#AA2222,#FF4444)">View Live</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function openMatch(id) {
+  currentMatchId = id;
+  if (MATCHES.find(m => m.id === id)?.status === 'upcoming') openTeamSelection(id);
+  else { showTab('leaderboard'); renderLeaderboard(); }
+}
+
+// ─── TEAM SELECTION ────────────────────────────────────────────────────────
+function openTeamSelection(matchId) {
+  currentMatchId = matchId;
+  const m = MATCHES.find(x => x.id === matchId);
+  document.getElementById('modal-match-title').textContent = `${m.team1} vs ${m.team2} — Select Team`;
+  selectedPlayers.clear(); captainId = null; vcId = null; captainMode = null;
+  document.getElementById('cap-vc-row').style.display = 'none';
+  document.getElementById('teamModal').classList.add('open');
+  activeRoleFilter = 'all';
+  document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.role-tab').classList.add('active');
+  renderPlayers();
+  updateSelStats();
+}
+
+function closeModal() {
+  document.getElementById('teamModal').classList.remove('open');
+}
+
+function filterRole(role, el) {
+  activeRoleFilter = role;
+  document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderPlayers();
+}
+
+const ROLE_ICONS = { batsman: '🏏', bowler: '⚾', 'all-rounder': '⭐', 'wicket-keeper': '🧤' };
+
+function renderPlayers() {
+  const list = document.getElementById('players-list');
+  const filtered = activeRoleFilter === 'all' ? PLAYERS : PLAYERS.filter(p => p.role === activeRoleFilter);
+  const usedCredits = [...selectedPlayers].reduce((s, id) => s + (PLAYERS.find(p => p.id === id)?.credits || 0), 0);
+
+  list.innerHTML = filtered.map(p => {
+    const isSel = selectedPlayers.has(p.id);
+    const isCap = captainId === p.id;
+    const isVC = vcId === p.id;
+    const canAfford = usedCredits + p.credits <= 100;
+    const opacity = !isSel && (!canAfford || selectedPlayers.size >= 11) ? '0.45' : '1';
+    return `
+    <div class="player-row ${isSel ? 'selected' : ''}" style="opacity:${opacity}" onclick="togglePlayer('${p.id}')">
+      <div class="player-icon ${isSel ? 'selected' : 'normal'}">${ROLE_ICONS[p.role]}</div>
+      <div class="player-info">
+        <div class="player-name-row">
+          <span class="p-name ${isSel ? 'selected-name' : ''}">${p.name}</span>
+          ${isCap ? '<span class="cap-badge">C</span>' : ''}
+          ${isVC ? '<span class="vc-badge">VC</span>' : ''}
+        </div>
+        <div class="p-meta">${p.team} • ${p.role}</div>
+      </div>
+      <div class="p-credits">${p.credits}</div>
+      <div class="p-pts">${p.pts}</div>
+      ${isSel ? '<div class="check-circle">✓</div>' : '<div style="width:22px"></div>'}
+    </div>`;
+  }).join('');
+}
+
+function togglePlayer(id) {
+  if (captainMode) {
+    if (!selectedPlayers.has(id)) { showToast('Select player first'); return; }
+    if (captainMode === 'captain') {
+      captainId = id;
+      if (vcId === id) vcId = null;
+    } else {
+      vcId = id;
+      if (captainId === id) captainId = null;
+    }
+    captainMode = null;
+    document.getElementById('cap-btn').classList.remove('active-c');
+    document.getElementById('vc-btn').classList.remove('active-vc');
+    renderPlayers(); updateSelStats(); return;
+  }
+
+  const p = PLAYERS.find(x => x.id === id);
+  const usedCredits = [...selectedPlayers].reduce((s, pid) => s + (PLAYERS.find(x => x.id === pid)?.credits || 0), 0);
+
+  if (selectedPlayers.has(id)) {
+    selectedPlayers.delete(id);
+    if (captainId === id) captainId = null;
+    if (vcId === id) vcId = null;
+  } else {
+    if (selectedPlayers.size >= 11) { showToast('Team is full! Remove a player first.'); return; }
+    if (usedCredits + p.credits > 100) { showToast('Not enough credits!'); return; }
+    selectedPlayers.add(id);
+  }
+
+  document.getElementById('cap-vc-row').style.display = selectedPlayers.size > 0 ? 'flex' : 'none';
+  renderPlayers();
+  updateSelStats();
+}
+
+function updateSelStats() {
+  const n = selectedPlayers.size;
+  const usedCr = [...selectedPlayers].reduce((s, id) => s + (PLAYERS.find(p => p.id === id)?.credits || 0), 0);
+  document.getElementById('sel-count').textContent = n + '/11';
+  const crEl = document.getElementById('sel-credits');
+  crEl.textContent = (100 - usedCr).toFixed(1);
+  crEl.style.color = (100 - usedCr) < 10 ? 'var(--red)' : 'var(--orange)';
+  document.getElementById('sel-captain').textContent = captainId ? PLAYERS.find(p => p.id === captainId)?.name?.split(' ').pop() : '—';
+  document.getElementById('sel-vc').textContent = vcId ? PLAYERS.find(p => p.id === vcId)?.name?.split(' ').pop() : '—';
+  const btn = document.getElementById('save-btn');
+  btn.textContent = `Save Team (${n}/11)`;
+  btn.disabled = n !== 11 || !captainId || !vcId;
+}
+
+function toggleCaptainMode(mode) {
+  captainMode = captainMode === mode ? null : mode;
+  document.getElementById('cap-btn').classList.toggle('active-c', captainMode === 'captain');
+  document.getElementById('vc-btn').classList.toggle('active-vc', captainMode === 'vc');
+}
+
+function saveTeam() {
+  closeModal();
+  const m = MATCHES.find(x => x.id === currentMatchId);
+  MY_TEAMS.push({
+    id: 't' + Date.now(), matchId: currentMatchId, matchName: m.team1 + ' vs ' + m.team2,
+    status: m.status, teamName: 'My Dream Team', players: 11, credits: 97.0, points: 0, rank: 0,
+    captain: PLAYERS.find(p => p.id === captainId)?.name || '',
+    vc: PLAYERS.find(p => p.id === vcId)?.name || ''
+  });
+  showToast('🎉 Team saved successfully!');
+}
+
+// ─── LEADERBOARD ───────────────────────────────────────────────────────────
+function renderLeaderboard() {
+  const list = document.getElementById('leaderboard-list');
+  list.innerHTML = LEADERBOARD.map(e => `
+    <div class="lb-row ${e.isMe ? 'my-row' : ''}">
+      <div class="rank-col">
+        ${e.rank <= 3 ? `<div class="rank-emoji">${['🥇','🥈','🥉'][e.rank-1]}</div>` : `<div class="rank-num">#${e.rank}</div>`}
+      </div>
+      <div class="lb-avatar ${e.isMe ? 'me' : ''}">${e.username[0].toUpperCase()}</div>
+      <div class="lb-user">
+        <div class="lb-username ${e.isMe ? 'me' : ''}">${e.username}${e.isMe ? ' (You)' : ''}</div>
+        <div class="lb-team">${e.team}</div>
+      </div>
+      <div class="lb-points">
+        <div class="lb-pts-val" style="${e.rank<=3 ? 'color:' + ['#FFD700','#C0C0C0','#CD7F32'][e.rank-1] : ''}">${e.pts}</div>
+        <div class="lb-pts-label">pts</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Scorecard after leaderboard
+  list.innerHTML += `
+    <div style="padding: 16px 16px 8px; border-top: 1px solid var(--border); margin-top: 8px;">
+      <div class="section-title">📊 Top Performers</div>
+    </div>
+    <div class="scorecard-header">
+      <div class="sc-h" style="flex:1">Player</div>
+      <div class="sc-h" style="width:40px;text-align:center">R</div>
+      <div class="sc-h" style="width:40px;text-align:center">W</div>
+      <div class="sc-h" style="width:44px;text-align:center">Pts</div>
+    </div>
+    ${PERFORMANCES.map((p, i) => `
+    <div class="sc-row ${i < 3 ? 'top' : ''}">
+      <div class="sc-player">
+        <div class="sc-name">${p.name}</div>
+        <div class="sc-meta">${p.team} • ${p.runs}(${p.balls})${p.wickets ? ' • ' + p.wickets + 'W' : ''}</div>
+      </div>
+      <div class="sc-val">${p.runs}</div>
+      <div class="sc-val">${p.wickets}</div>
+      <div class="sc-pts">${p.pts}</div>
+    </div>`).join('')}
+  `;
+}
+
+// ─── MY TEAMS ──────────────────────────────────────────────────────────────
+function renderMyTeams() {
+  const list = document.getElementById('myteams-list');
+  if (MY_TEAMS.length === 0) { list.innerHTML = '<div class="empty-state">No teams yet. Join a match!</div>'; return; }
+
+  list.innerHTML = MY_TEAMS.map(t => `
+    <div style="margin: 0 16px 14px; background: var(--bg3); border-radius: 16px; border: 1px solid var(--border); padding: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <div style="font-weight:800; font-size:16px;">${t.teamName}</div>
+        <div class="status-badge status-${t.status}" style="font-size:10px;">${t.status.toUpperCase()}</div>
+      </div>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:12px;">⚔️ ${t.matchName}</div>
+      <div style="display:flex; justify-content:space-around; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:12px 0; margin-bottom:12px;">
+        <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:var(--blue)">${t.players}</div><div style="font-size:10px;color:var(--muted)">Players</div></div>
+        <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:var(--orange)">${t.credits}</div><div style="font-size:10px;color:var(--muted)">Credits</div></div>
+        <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:var(--green)">${t.points || '—'}</div><div style="font-size:10px;color:var(--muted)">Points</div></div>
+        ${t.rank ? `<div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:var(--orange2)">#${t.rank}</div><div style="font-size:10px;color:var(--muted)">Rank</div></div>` : ''}
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <div style="background:rgba(247,147,30,0.15); border:1px solid rgba(247,147,30,0.4); border-radius:8px; padding:4px 8px; font-size:11px; color:var(--orange2);">👑 C: ${t.captain.split(' ').pop()}</div>
+        <div style="background:rgba(74,158,255,0.15); border:1px solid rgba(74,158,255,0.4); border-radius:8px; padding:4px 8px; font-size:11px; color:var(--blue);">⭐ VC: ${t.vc.split(' ').pop()}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── ADMIN ─────────────────────────────────────────────────────────────────
+function adminCreateMatch() {
+  const t1 = document.getElementById('t1').value;
+  const t2 = document.getElementById('t2').value;
+  const venue = document.getElementById('venue').value;
+  if (!t1 || !t2 || !venue) { document.getElementById('match-msg').innerHTML = '<div style="color:var(--red);font-size:13px;padding:8px 0">Please fill all fields</div>'; return; }
+  MATCHES.push({ id: 'm' + Date.now(), team1: t1, team2: t2, venue, scheduledAt: Date.now() + 48*3600000, status: 'upcoming', prizePool: parseInt(document.getElementById('prize').value) || 25000 });
+  document.getElementById('match-msg').innerHTML = '<div class="success-msg">✅ Match created successfully!</div>';
+  setTimeout(() => document.getElementById('match-msg').innerHTML = '', 3000);
+}
+
+let simRunning = false;
+function runSimulation() {
+  if (simRunning) return;
+  simRunning = true;
+  const btn = event.currentTarget;
+  btn.textContent = '⏳ Simulating...';
+  btn.disabled = true;
+  setTimeout(() => {
+    // Update the "live" match to completed
+    const liveMatch = MATCHES.find(m => m.status === 'live');
+    if (liveMatch) {
+      liveMatch.status = 'completed';
+      liveMatch.result = { team1Score: '187/6', team2Score: '172/9', description: liveMatch.team1 + ' won by 15 runs' };
+    }
+    // Update leaderboard points randomly
+    LEADERBOARD.forEach(e => { e.pts = Math.round((e.pts + Math.random() * 50) * 10) / 10; });
+    LEADERBOARD.sort((a,b) => b.pts - a.pts).forEach((e, i) => e.rank = i + 1);
+    document.getElementById('sim-msg').innerHTML = '<div class="success-msg">⚡ Simulation complete! Points calculated & leaderboard updated.</div>';
+    btn.textContent = '⚡ Run Match Simulation';
+    btn.disabled = false;
+    simRunning = false;
+    showToast('Match simulation complete!');
+    renderMatches();
+  }, 2200);
+}
+
+function adminAddPlayer() {
+  const name = document.getElementById('pname').value;
+  if (!name) { document.getElementById('player-msg').innerHTML = '<div style="color:var(--red);font-size:13px;padding:8px 0">Enter player name</div>'; return; }
+  PLAYERS.push({ id: 'p' + Date.now(), name, team: document.getElementById('pteam').value, role: document.getElementById('prole').value, credits: parseFloat(document.getElementById('pcredits').value) || 8.0, pts: Math.floor(Math.random() * 40 + 40) });
+  document.getElementById('player-msg').innerHTML = '<div class="success-msg">✅ Player added!</div>';
+  document.getElementById('pname').value = '';
+  setTimeout(() => document.getElementById('player-msg').innerHTML = '', 3000);
+}
+
+// ─── UTILS ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showTab(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const tabs = { matches: 0, myteams: 1, leaderboard: 2, admin: 3 };
+  document.querySelectorAll('.nav-tab')[tabs[name]]?.classList.add('active');
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+renderMatches();
+
+// Set default date
+document.getElementById('mdate').value = new Date().toISOString().split('T')[0];
+
+// Simulate live updates
+let liveOver = 8, liveBall = 0;
+setInterval(() => {
+  const liveMatch = MATCHES.find(m => m.status === 'live');
+  if (!liveMatch) return;
+  liveBall++;
+  if (liveBall > 6) { liveBall = 1; liveOver++; }
+  const runs = [0,1,2,4,6][Math.floor(Math.random()*5)];
+  const ws = document.querySelector('.ws-chip');
+  if (ws) ws.style.opacity = ws.style.opacity === '0.4' ? '1' : '0.4';
+}, 4000);
+</script>
+</body>
+</html>
